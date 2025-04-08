@@ -4,11 +4,15 @@ import 'package:werapp/services/websocket_chat_service.dart' show WebSocketChatS
 import 'home_screen.dart';
 import 'services/chat_service.dart';
 import 'services/chat_service_factory.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
-  // Create a chat service
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await SharedPreferences.getInstance();
+
+
   final chatService = ChatServiceFactory.createChatService(
-    // Use mock for development and testing
     ChatServiceType.mock,
     // For WebSocket, provide URL:
     // ChatServiceType.webSocket,
