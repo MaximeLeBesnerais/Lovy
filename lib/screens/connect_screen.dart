@@ -5,8 +5,11 @@ class ConnectScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Connect Screen'),
+    return Scaffold(
+      appBar: AppBar(title: const Text("Connect")),
+      body: Center(
+        child: Text("Connect to a device"),
+      ),
     );
   }
 }
