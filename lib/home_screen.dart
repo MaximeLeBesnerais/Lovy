@@ -4,9 +4,16 @@ import 'screens/connect_screen.dart';
 import 'screens/profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  final Function(ThemeMode) setTheme; // system, light, dark
-  
-  const HomeScreen({super.key, required this.setTheme});
+  final Function(ThemeMode) setTheme;
+  final Function(Color) setThemeColor;
+  final Color currentThemeColor;
+
+  const HomeScreen({
+    super.key,
+    required this.setTheme,
+    required this.setThemeColor,
+    required this.currentThemeColor,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -22,7 +29,11 @@ class _HomeScreenState extends State<HomeScreen> {
       case 1:
         return const ConnectScreen();
       case 2:
-        return ProfileScreen(setTheme: widget.setTheme);
+        return ProfileScreen(
+          setTheme: widget.setTheme,
+          setThemeColor: widget.setThemeColor,
+          currentThemeColor: widget.currentThemeColor,
+        );
       default:
         return const ChatScreen();
     }
@@ -43,10 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
       icon: Icon(Icons.connect_without_contact_outlined),
       label: 'Connect',
     ),
-    BottomNavigationBarItem(
-      icon: Icon(Icons.person_outline),
-      label: 'Me',
-    ),
+    BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Me'),
   ];
 
   @override

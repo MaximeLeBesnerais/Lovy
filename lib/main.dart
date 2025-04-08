@@ -14,6 +14,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   ThemeMode _themeMode = ThemeMode.system;
+  Color _themeColor = Colors.pink;
 
   void setThemeMode(ThemeMode mode) {
     setState(() {
@@ -21,6 +22,11 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
+  void setThemeColor(Color color) {
+    setState(() {
+      _themeColor = color;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +36,7 @@ class _MyAppState extends State<MyApp> {
       theme: ThemeData(
         brightness: Brightness.light,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.pink,
+          seedColor: _themeColor,
           brightness: Brightness.light,
         ),
         useMaterial3: true,
@@ -41,7 +47,7 @@ class _MyAppState extends State<MyApp> {
       darkTheme: ThemeData(
         brightness: Brightness.dark,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.pink,
+          seedColor: _themeColor,
           brightness: Brightness.dark,
         ),
         useMaterial3: true,
@@ -49,7 +55,11 @@ class _MyAppState extends State<MyApp> {
           centerTitle: true,
         ),
       ),
-      home: HomeScreen(setTheme: setThemeMode),
+      home: HomeScreen(
+        setTheme: setThemeMode,
+        setThemeColor: setThemeColor,
+        currentThemeColor: _themeColor,
+      ),
     );
   }
 }
