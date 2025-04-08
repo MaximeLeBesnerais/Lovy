@@ -26,7 +26,7 @@ class ConnectionSettingsCard extends StatelessWidget {
         context: context,
         builder: (context) {
           return AlertDialog(
-            title: const Text('Your Connection QR Code'),
+            title: Center(child: const Text('Your QR Code')),
             alignment: Alignment.center,
             content: SizedBox(
               width: 250,
@@ -77,9 +77,7 @@ class ConnectionSettingsCard extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(12.0),
                   decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surface.withAlpha(51),
+                    color: Theme.of(context).colorScheme.surface.withAlpha(51),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: Theme.of(
