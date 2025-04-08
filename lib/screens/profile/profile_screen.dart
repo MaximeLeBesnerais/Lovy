@@ -166,12 +166,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onPressed: _toggleEditMode,
               tooltip: 'Edit Profile',
             ),
-          if (!_isLoading)
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: _loadInitialData,
-              tooltip: 'Refresh Profile',
-            ),
         ],
         elevation: 1,
         shadowColor: Theme.of(context).shadowColor.withAlpha(77),
@@ -179,8 +173,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body:
           _isLoading
               ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(
-                onRefresh: _loadInitialData,
+              : Center(
                 child: ListView(
                   padding: const EdgeInsets.all(16.0),
                   children: [
