@@ -13,18 +13,9 @@ class QrService {
     // Generate a new key if none exists
     key ??= await EncryptionService.generateKey();
 
-    // Compress the profile image if it exists
-    String base64Image = '';
-    if (profile.profileImagePath != null) {
-      base64Image = await EncryptionService.compressProfileImage(
-        profile.profileImagePath!,
-      );
-    }
-
     // Create the data object
     final Map<String, dynamic> qrData = {
       'name': profile.name ?? 'User',
-      'picture': base64Image,
       'key': key,
     };
 
