@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:werapp/models/profile_manager.dart';
+import 'package:werapp/services/profile_manager.dart';
 import 'package:werapp/services/encryption_service.dart';
 import 'package:werapp/services/qr_service.dart';
-import '../models/user_profile.dart';
+import '../../models/user_profile.dart';
 
 // Profile Screen
 class ProfileScreen extends StatefulWidget {
@@ -76,7 +76,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _isEditMode = false; // Exit edit mode after saving
       });
 
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Profile updated')));
@@ -105,57 +105,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
-  // Cancel changes and exit edit mode
   void _cancelEdit() {
     setState(() {
       _nameController.text = _userProfile?.name ?? '';
       _isEditMode = false;
     });
-  }
-
-  Future<void> _showQrCodeModal() async {
-    if (_userProfile == null) return;
-
-    // Set loading state
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final String qrData = await ProfileManager.getQrData();
-
-      if (!context.mounted) return;
-      final hereContext = context;
-
-      // Show the QR code in a modal
-      await showDialog(
-        context: hereContext,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('Your QR Code'),
-            alignment: Alignment.center,
-            content: SizedBox(
-              width: 250,
-              height: 250,
-              child: QrService.generateQrCodeWidget(qrData),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close'),
-              ),
-            ],
-          );
-        },
-      );
-    } finally {
-      // Reset loading state if still mounted
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
   }
 
   @override
@@ -233,7 +187,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             radius: 50,
             backgroundColor: Theme.of(
               context,
-            ).colorScheme.primary.withValues(alpha: 0.2),
+            ).colorScheme.primary.withAlpha(51),
             backgroundImage:
                 _userProfile?.profileImagePath != null
                     ? FileImage(File(_userProfile!.profileImagePath!))
@@ -256,9 +210,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildViewOnlyProfileImage() {
     return CircleAvatar(
       radius: 50,
-      backgroundColor: Theme.of(
-        context,
-      ).colorScheme.primary.withValues(alpha: 0.2),
+      backgroundColor: Theme.of(context).colorScheme.primary.withAlpha(51),
       backgroundImage:
           _userProfile?.profileImagePath != null
               ? FileImage(File(_userProfile!.profileImagePath!))
@@ -293,7 +245,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+          color: Theme.of(context).colorScheme.outline.withAlpha(77),
         ),
       ),
       child: Row(
@@ -458,7 +410,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     border: Border.all(
                       color: Theme.of(
                         context,
-                      ).colorScheme.outline.withValues(alpha: 0.3),
+                      ).colorScheme.outline.withAlpha(77),
                     ),
                   ),
                   child: Row(
@@ -488,7 +440,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ElevatedButton.icon(
-              onPressed: _showQrCodeModal,
+              // onPressed: _showQrCodeModal,
+              onPressed: () async {
+                final String qrData = await ProfileManager.getQrData();
+                if (mounted) {
+                  await showDialog(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog(
+                        title: const Text('Your QR Code'),
+                        alignment: Alignment.center,
+                        content: SizedBox(
+                          width: 250,
+                          height: 250,
+                          child: QrService.generateQrCodeWidget(qrData),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text('Close'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                }
+              },
               icon: const Icon(Icons.qr_code),
               label: const Text('Show Your QR Code'),
               style: ElevatedButton.styleFrom(
@@ -538,7 +515,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     isSelected
                         ? [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.3),
+                            color: Colors.black.withAlpha(77),
                             blurRadius: 5,
                             spreadRadius: 1,
                           ),
