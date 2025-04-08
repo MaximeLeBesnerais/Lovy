@@ -123,9 +123,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() {
           _userProfile?.profileImagePath = image.path;
         });
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Profile image updated')));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Profile image updated')),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -172,42 +174,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
         ],
         elevation: 1,
-        shadowColor: Theme.of(context).shadowColor.withOpacity(0.2),
+        shadowColor: Theme.of(context).shadowColor.withAlpha(77),
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
-          : RefreshIndicator(
-              onRefresh: _loadInitialData,
-              child: ListView(
-                padding: const EdgeInsets.all(
-                  16.0,
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : RefreshIndicator(
+                onRefresh: _loadInitialData,
+                child: ListView(
+                  padding: const EdgeInsets.all(16.0),
+                  children: [
+                    ProfileHeader(
+                      userProfile: _userProfile,
+                      nameController: _nameController,
+                      isEditMode: _isEditMode,
+                      onPickImage: _pickImage,
+                      onSaveChanges: _updateName,
+                      onCancelEdit: _cancelEdit,
+                    ),
+                    const SizedBox(height: 24),
+                    ThemeSettingsCard(
+                      setThemeMode: widget.setThemeMode,
+                      setThemeColor: widget.setThemeColor,
+                      currentThemeColor: widget.currentThemeColor,
+                      currentThemeMode: widget.currentThemeMode,
+                    ),
+                    const SizedBox(height: 24),
+                    ConnectionSettingsCard(userId: _userId),
+                    const SizedBox(height: 24),
+                  ],
                 ),
-                children: [
-                  ProfileHeader(
-                    userProfile: _userProfile,
-                    nameController: _nameController,
-                    isEditMode: _isEditMode,
-                    onPickImage: _pickImage,
-                    onSaveChanges: _updateName,
-                    onCancelEdit: _cancelEdit,
-                  ),
-                  const SizedBox(height: 24),
-                  ThemeSettingsCard(
-                    setThemeMode: widget.setThemeMode,
-                    setThemeColor: widget.setThemeColor,
-                    currentThemeColor: widget.currentThemeColor,
-                    currentThemeMode: widget.currentThemeMode,
-                  ),
-                  const SizedBox(height: 24),
-                  ConnectionSettingsCard(
-                    userId: _userId,
-                  ),
-                  const SizedBox(height: 24),
-                ],
               ),
-            ),
     );
   }
 
