@@ -33,14 +33,9 @@ class QrService {
   }
 
   // Create a QR code widget from the data
-  static Future<Widget> generateQrCode(
-    UserProfile profile, {
-    double size = 250,
-  }) async {
-    final String data = await generateQrData(profile);
-
+  static Widget generateQrCodeWidget(String qrData, {double size = 250}) {
     return QrImageView(
-      data: data,
+      data: qrData,
       version: QrVersions.auto,
       size: size,
       backgroundColor: Colors.white,

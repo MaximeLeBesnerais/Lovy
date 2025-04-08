@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:werapp/models/profile_manager.dart';
 import 'package:werapp/services/encryption_service.dart';
 import 'package:werapp/services/qr_service.dart';
@@ -117,53 +116,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _showQrCodeModal() async {
     if (_userProfile == null) return;
 
-    // Generate QR code data
-    final String qrData = await QrService.generateQrData(_userProfile!);
+    // Set loading state
+    setState(() {
+      _isLoading = true;
+    });
 
-    if (!context.mounted) return;
+    try {
+      // Get the cached QR data or generate new if needed
+      final String qrData = await ProfileManager.getQrData();
 
-    // Show the QR code in a modal
-    await showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Share Your Profile Key'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Let your partner scan this QR code to connect with you securely.',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(8.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+      if (!context.mounted) return;
+
+      // Show the QR code in a modal
+      await showDialog(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              title: const Text('Share Your Profile Key'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Let your partner scan this QR code to connect with you securely.',
+                    textAlign: TextAlign.center,
                   ),
-                  child: QrImageView(
-                    data: qrData,
-                    version: QrVersions.auto,
-                    size: 250,
-                    backgroundColor: Colors.white,
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(8.0),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: QrService.generateQrCodeWidget(qrData, size: 250),
                   ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Your ID: $_userId',
-                  style: Theme.of(context).textTheme.bodySmall,
+                  const SizedBox(height: 10),
+                  Text(
+                    'Your ID: $_userId',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Close'),
                 ),
               ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close'),
-              ),
-            ],
-          ),
-    );
+      );
+    } finally {
+      // Reset loading state if still mounted
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -264,7 +272,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildViewOnlyProfileImage() {
     return CircleAvatar(
       radius: 50,
-      backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+      backgroundColor: Theme.of(
+        context,
+      ).colorScheme.primary.withValues(alpha: 0.2),
       backgroundImage:
           _userProfile?.profileImagePath != null
               ? FileImage(File(_userProfile!.profileImagePath!))
