@@ -77,6 +77,7 @@ class _MyAppState extends State<MyApp> {
         setTheme: setThemeMode,
         setThemeColor: setThemeColor,
         currentThemeColor: _themeColor,
+        currentThemeMode: _themeMode,
         chatService: widget.chatService, // Pass the chat service
       ),
     );

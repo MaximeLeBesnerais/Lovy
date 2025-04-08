@@ -100,7 +100,7 @@ class ThemeSettingsCard extends StatelessWidget {
                     return ColorOption(
                       color: color,
                       label: label,
-                      isSelected: currentThemeColor.value == color.value,
+                      isSelected: currentThemeColor == color,
                       onTap: () => setThemeColor(color),
                     );
                   }).toList(),

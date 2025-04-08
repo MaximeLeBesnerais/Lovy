@@ -79,7 +79,7 @@ class ConnectionSettingsCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Theme.of(
                       context,
-                    ).colorScheme.surface.withOpacity(0.5),
+                    ).colorScheme.surface.withAlpha(51),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: Theme.of(

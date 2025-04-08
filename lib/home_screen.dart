@@ -8,6 +8,7 @@ class HomeScreen extends StatefulWidget {
   final Function(ThemeMode) setTheme;
   final Function(Color) setThemeColor;
   final Color currentThemeColor;
+  final ThemeMode currentThemeMode;
   final ChatService chatService;
 
   const HomeScreen({
@@ -15,6 +16,7 @@ class HomeScreen extends StatefulWidget {
     required this.setTheme,
     required this.setThemeColor,
     required this.currentThemeColor,
+    required this.currentThemeMode,
     required this.chatService,
   });
 
@@ -33,9 +35,10 @@ class _HomeScreenState extends State<HomeScreen> {
         return const ConnectScreen();
       case 2:
         return ProfileScreen(
-          setTheme: widget.setTheme,
+          setThemeMode: widget.setTheme,
           setThemeColor: widget.setThemeColor,
           currentThemeColor: widget.currentThemeColor,
+          currentThemeMode: widget.currentThemeMode,
         );
       default:
         return ChatScreen(chatService: widget.chatService);

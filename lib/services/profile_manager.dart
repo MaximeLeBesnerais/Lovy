@@ -112,7 +112,6 @@ class ProfileManager {
 
       return resizedFilePath;
     } catch (e) {
-      print('Error resizing image: $e');
       return imagePath; // Return original if error
     }
   }
