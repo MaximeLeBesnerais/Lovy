@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../models/user_profile.dart';
@@ -12,23 +14,28 @@ class QrService {
     // Generate a new key if none exists
     key ??= await EncryptionService.generateKey();
 
-    return key;
+    final Map<String, dynamic> qrData = {
+      'name': profile.name,
+      'key': key,
+    };
+
+    return jsonEncode(qrData);
   }
 
   // Create a QR code widget from the data
-  static Widget generateQrCodeWidget(String qrData, {double size = 250}) {
+  static Widget generateQrCodeWidget(String qrData, {double size = 200}) {
     return QrImageView(
       data: qrData,
       version: QrVersions.auto,
       size: size,
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.white.withAlpha(200),
     );
   }
 
   // Parse QR code data from scan result
-  static String? parseQrData(String data) {
+  static Map<String, dynamic>? parseQrData(String data) {
     try {
-      return data;
+      return jsonDecode(data)['key'] as Map<String, dynamic>;
     } catch (e) {
       return null;
     }

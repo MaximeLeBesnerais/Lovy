@@ -122,48 +122,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-      // Get the cached QR data or generate new if needed
-      print('Loading QR data...');
       final String qrData = await ProfileManager.getQrData();
 
       if (!context.mounted) return;
+      final hereContext = context;
 
       // Show the QR code in a modal
       await showDialog(
-        context: context,
-        builder:
-            (context) => AlertDialog(
-              title: const Text('Share Your Profile Key'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Let your partner scan this QR code to connect with you securely.',
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.all(8.0),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: QrService.generateQrCodeWidget(qrData, size: 250),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Your ID: $_userId',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Close'),
-                ),
-              ],
+        context: hereContext,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Your QR Code'),
+            alignment: Alignment.center,
+            content: SizedBox(
+              width: 250,
+              height: 250,
+              child: QrService.generateQrCodeWidget(qrData),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          );
+        },
       );
     } finally {
       // Reset loading state if still mounted
