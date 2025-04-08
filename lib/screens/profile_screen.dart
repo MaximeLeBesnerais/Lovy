@@ -1,9 +1,167 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
+import 'dart:typed_data';
+import 'package:crypto/crypto.dart';
+import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:werapp/models/profile_manager.dart';
 import '../models/user_profile.dart';
 
+// Encryption Service
+class EncryptionService {
+  static const String _keyStorageKey = 'encryption_key';
+  static const String _userIdStorageKey = 'user_id';
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+
+  // Generate a new encryption key
+  static Future<String> generateKey() async {
+    final Random random = Random.secure();
+    final List<int> values = List<int>.generate(32, (i) => random.nextInt(256));
+    final String key = base64Url.encode(values);
+
+    // Save the key to secure storage
+    await _secureStorage.write(key: _keyStorageKey, value: key);
+
+    // Generate and save user ID from key hash
+    final String userId = generateUserIdFromKey(key);
+    await _secureStorage.write(key: _userIdStorageKey, value: userId);
+
+    return key;
+  }
+
+  // Get the current user's encryption key
+  static Future<String?> getCurrentKey() async {
+    return await _secureStorage.read(key: _keyStorageKey);
+  }
+
+  // Generate a user ID by hashing the encryption key
+  static String generateUserIdFromKey(String key) {
+    final bytes = utf8.encode(key);
+    final digest = sha256.convert(bytes);
+    // Use first 16 characters of the hash as the user ID
+    return digest.toString().substring(0, 16);
+  }
+
+  // Get the current user's ID
+  static Future<String?> getCurrentUserId() async {
+    return await _secureStorage.read(key: _userIdStorageKey);
+  }
+
+  // Encrypt a message with the specified key
+  static String encryptMessage(String message, String key) {
+    final keyBytes = base64Url.decode(key);
+    final encryptKey = encrypt.Key(Uint8List.fromList(keyBytes));
+    final iv = encrypt.IV.fromLength(16);
+
+    final encrypter = encrypt.Encrypter(encrypt.AES(encryptKey));
+    final encrypted = encrypter.encrypt(message, iv: iv);
+
+    return encrypted.base64;
+  }
+
+  // Decrypt a message with the specified key
+  static String decryptMessage(String encryptedMessage, String key) {
+    try {
+      final keyBytes = base64Url.decode(key);
+      final encryptKey = encrypt.Key(Uint8List.fromList(keyBytes));
+      final iv = encrypt.IV.fromLength(16);
+
+      final encrypter = encrypt.Encrypter(encrypt.AES(encryptKey));
+      final decrypted = encrypter.decrypt64(encryptedMessage, iv: iv);
+
+      return decrypted;
+    } catch (e) {
+      // If decryption fails, it might be encrypted with another key
+      return '';
+    }
+  }
+
+  // Process and compress an image for QR code sharing
+  static Future<String> compressProfileImage(
+    String imagePath, {
+    int maxWidth = 150,
+    int maxHeight = 150,
+    int quality = 70,
+  }) async {
+    final File imageFile = File(imagePath);
+    if (!await imageFile.exists()) {
+      return '';
+    }
+
+    final List<int> imageBytes = await imageFile.readAsBytes();
+    final img.Image? originalImage = img.decodeImage(Uint8List.fromList(imageBytes));
+
+    if (originalImage == null) {
+      return '';
+    }
+
+    // Resize the image to reduce size
+    final img.Image resizedImage = img.copyResize(
+      originalImage,
+      width: maxWidth,
+      height: maxHeight,
+    );
+
+    // Encode image to JPEG with the specified quality
+    final List<int> compressedBytes = img.encodeJpg(
+      resizedImage,
+      quality: quality,
+    );
+
+    // Convert to base64
+    final String base64Image = base64Encode(compressedBytes);
+
+    return base64Image;
+  }
+}
+
+// QR Service
+class QrService {
+  // Generate QR code data from user profile and encryption key
+  static Future<String> generateQrData(UserProfile profile) async {
+    // Get the current key
+    String? key = await EncryptionService.getCurrentKey();
+
+    // Generate a new key if none exists
+    if (key == null) {
+      key = await EncryptionService.generateKey();
+    }
+
+    // Compress the profile image if it exists
+    String base64Image = '';
+    if (profile.profileImagePath != null) {
+      base64Image = await EncryptionService.compressProfileImage(
+        profile.profileImagePath!,
+      );
+    }
+
+    // Create the data object
+    final Map<String, dynamic> qrData = {
+      'name': profile.name ?? 'User',
+      'picture': base64Image,
+      'key': key,
+    };
+
+    // Convert to JSON string
+    return jsonEncode(qrData);
+  }
+
+  // Parse QR code data from scan result
+  static Map<String, dynamic>? parseQrData(String data) {
+    try {
+      return jsonDecode(data) as Map<String, dynamic>;
+    } catch (e) {
+      return null;
+    }
+  }
+}
+
+// Profile Screen
 class ProfileScreen extends StatefulWidget {
   final Function(ThemeMode) setTheme;
   final Function(Color) setThemeColor;
@@ -23,7 +181,8 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   UserProfile? _userProfile;
   bool _isLoading = true;
-  bool _isEditMode = false; // Added to track edit mode
+  bool _isEditMode = false;
+  String? _userId;
   final TextEditingController _nameController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
@@ -31,6 +190,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadProfile();
+    _loadUserId();
+  }
+
+  Future<void> _loadUserId() async {
+    final userId = await EncryptionService.getCurrentUserId();
+    if (userId == null) {
+      // No encryption key exists yet, generate one
+      await EncryptionService.generateKey();
+      final newUserId = await EncryptionService.getCurrentUserId();
+      setState(() {
+        _userId = newUserId;
+      });
+    } else {
+      setState(() {
+        _userId = userId;
+      });
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -92,6 +268,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
+  Future<void> _showQrCodeModal() async {
+    if (_userProfile == null) return;
+
+    // Generate QR code data
+    final String qrData = await QrService.generateQrData(_userProfile!);
+
+    if (!context.mounted) return;
+
+    // Show the QR code in a modal
+    await showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Share Your Profile Key'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Let your partner scan this QR code to connect with you securely.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: QrImageView(
+                    data: qrData,
+                    version: QrVersions.auto,
+                    size: 250,
+                    backgroundColor: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Your ID: $_userId',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -145,6 +373,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       // Theme Settings Card
                       _buildThemeSettingsCard(),
+
+                      const SizedBox(height: 24),
+
+                      // Connection Settings Card
+                      _buildConnectionSettingsCard(),
                     ],
                   ),
                 ),
@@ -355,6 +588,86 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   'Purple',
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConnectionSettingsCard() {
+    return Card(
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Text(
+              'Connection Settings',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 16),
+            if (_userId != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: Container(
+                  padding: const EdgeInsets.all(12.0),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.outline.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.vpn_key_outlined,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Your User ID',
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                            Text(
+                              _userId!,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ElevatedButton.icon(
+              onPressed: _showQrCodeModal,
+              icon: const Icon(Icons.qr_code),
+              label: const Text('Show Your QR Code'),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 50),
+              ),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () {
+                // TO-DO: Implement QR scanner
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('QR scanner coming soon')),
+                );
+              },
+              icon: const Icon(Icons.qr_code_scanner),
+              label: const Text('Scan Partner\'s QR Code'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 50),
+              ),
             ),
           ],
         ),
