@@ -102,7 +102,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       radius: 50,
                                       backgroundColor: Theme.of(
                                         context,
-                                      ).colorScheme.primary.withOpacity(0.2),
+                                      ).colorScheme.primary.withValues(alpha: 0.2),
                                       backgroundImage:
                                           _userProfile?.profileImagePath != null
                                               ? FileImage(
@@ -275,7 +275,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildColorOption(BuildContext context, Color color, String label) {
-    final isSelected = widget.currentThemeColor.value == color.value;
+    final isSelected = widget.currentThemeColor == color;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8.0),
