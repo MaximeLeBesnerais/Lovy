@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 class ProfileScreen extends StatelessWidget {
-  final VoidCallback toggleTheme;
+  final Function(ThemeMode) setTheme; // system, light, dark
   
-  const ProfileScreen({super.key, required this.toggleTheme});
+  const ProfileScreen({super.key, required this.setTheme});
 
   @override
   Widget build(BuildContext context) {
@@ -40,9 +40,29 @@ class ProfileScreen extends StatelessWidget {
                             : 'Light Mode Active',
                       ),
                       const SizedBox(width: 12),
-                      ElevatedButton(
-                        onPressed: toggleTheme,
-                        child: const Text('Toggle Theme'),
+                      DropdownButton<ThemeMode>(
+                        value: Theme.of(context).brightness == Brightness.dark
+                            ? ThemeMode.dark
+                            : ThemeMode.light,
+                        onChanged: (ThemeMode? newThemeMode) {
+                          if (newThemeMode != null) {
+                            setTheme(newThemeMode);
+                          }
+                        },
+                        items: const [
+                          DropdownMenuItem(
+                            value: ThemeMode.system,
+                            child: Text('System'),
+                          ),
+                          DropdownMenuItem(
+                            value: ThemeMode.light,
+                            child: Text('Light'),
+                          ),
+                          DropdownMenuItem(
+                            value: ThemeMode.dark,
+                            child: Text('Dark'),
+                          ),
+                        ],
                       ),
                     ],
                   ),

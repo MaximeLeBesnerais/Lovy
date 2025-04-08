@@ -4,9 +4,9 @@ import 'screens/connect_screen.dart';
 import 'screens/profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  final VoidCallback toggleTheme;
+  final Function(ThemeMode) setTheme; // system, light, dark
   
-  const HomeScreen({super.key, required this.toggleTheme});
+  const HomeScreen({super.key, required this.setTheme});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -22,7 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 1:
         return const ConnectScreen();
       case 2:
-        return ProfileScreen(toggleTheme: widget.toggleTheme);
+        return ProfileScreen(setTheme: widget.setTheme);
       default:
         return const ChatScreen();
     }

@@ -15,17 +15,12 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   ThemeMode _themeMode = ThemeMode.system;
 
-  void toggleTheme() {
+  void setThemeMode(ThemeMode mode) {
     setState(() {
-      if (_themeMode == ThemeMode.system) {
-        _themeMode = ThemeMode.light;
-      } else if (_themeMode == ThemeMode.light) {
-        _themeMode = ThemeMode.dark;
-      } else {
-        _themeMode = ThemeMode.light;
-      }
+      _themeMode = mode;
     });
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +30,7 @@ class _MyAppState extends State<MyApp> {
       theme: ThemeData(
         brightness: Brightness.light,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue,
+          seedColor: Colors.pink,
           brightness: Brightness.light,
         ),
         useMaterial3: true,
@@ -46,7 +41,7 @@ class _MyAppState extends State<MyApp> {
       darkTheme: ThemeData(
         brightness: Brightness.dark,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue,
+          seedColor: Colors.pink,
           brightness: Brightness.dark,
         ),
         useMaterial3: true,
@@ -54,7 +49,7 @@ class _MyAppState extends State<MyApp> {
           centerTitle: true,
         ),
       ),
-      home: HomeScreen(toggleTheme: toggleTheme),
+      home: HomeScreen(setTheme: setThemeMode),
     );
   }
 }
