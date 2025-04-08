@@ -123,6 +123,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       // Get the cached QR data or generate new if needed
+      print('Loading QR data...');
       final String qrData = await ProfileManager.getQrData();
 
       if (!context.mounted) return;

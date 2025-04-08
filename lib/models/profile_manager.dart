@@ -57,6 +57,7 @@ class ProfileManager {
   // Get cached QR data or generate new if needed
   static Future<String> getQrData() async {
     final profile = await loadProfile();
+    print('Profile loaded: ${profile.toJson()}');
 
     if (profile.cachedQrData != null && profile.cachedQrData!.isNotEmpty) {
       return profile.cachedQrData!;
