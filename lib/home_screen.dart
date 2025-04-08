@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/chat_screen.dart';
 import 'screens/connect_screen.dart';
-import 'screens/profile_screen.dart';
+import 'screens/profile/profile_screen.dart';
 import 'services/chat_service.dart';
 
 class HomeScreen extends StatefulWidget {
