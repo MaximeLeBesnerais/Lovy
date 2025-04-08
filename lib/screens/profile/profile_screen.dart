@@ -1,22 +1,24 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:werapp/services/profile_manager.dart';
 import 'package:werapp/services/encryption_service.dart';
-import 'package:werapp/services/qr_service.dart';
+import 'widgets/profile_header.dart';
+import 'widgets/theme_settings_card.dart';
+import 'widgets/connection_settings_card.dart';
 import '../../models/user_profile.dart';
 
-// Profile Screen
 class ProfileScreen extends StatefulWidget {
-  final Function(ThemeMode) setTheme;
+  final Function(ThemeMode) setThemeMode;
   final Function(Color) setThemeColor;
   final Color currentThemeColor;
+  final ThemeMode currentThemeMode;
 
   const ProfileScreen({
     super.key,
-    required this.setTheme,
+    required this.setThemeMode,
     required this.setThemeColor,
     required this.currentThemeColor,
+    required this.currentThemeMode,
   });
 
   @override
@@ -34,71 +36,109 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _loadProfile();
-    _loadUserId();
+    _loadInitialData();
   }
 
-  Future<void> _loadUserId() async {
-    final userId = await EncryptionService.getCurrentUserId();
-    if (userId == null) {
-      // No encryption key exists yet, generate one
-      await EncryptionService.generateKey();
-      final newUserId = await EncryptionService.getCurrentUserId();
-      setState(() {
-        _userId = newUserId;
-      });
-    } else {
-      setState(() {
-        _userId = userId;
-      });
+  Future<void> _loadInitialData() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final results = await Future.wait([
+        ProfileManager.loadProfile(),
+        _loadOrCreateUserId(),
+      ]);
+
+      final profile = results[0] as UserProfile;
+      final userId = results[1] as String?;
+
+      if (mounted) {
+        setState(() {
+          _userProfile = profile;
+          _nameController.text = profile.name ?? '';
+          _userId = userId;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load profile data: $e')),
+        );
+      }
     }
   }
 
-  Future<void> _loadProfile() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    final profile = await ProfileManager.loadProfile();
-
-    setState(() {
-      _userProfile = profile;
-      _nameController.text = profile.name ?? '';
-      _isLoading = false;
-    });
+  Future<String?> _loadOrCreateUserId() async {
+    String? userId = await EncryptionService.getCurrentUserId();
+    if (userId == null) {
+      await EncryptionService.generateKey();
+      userId = await EncryptionService.getCurrentUserId();
+    }
+    return userId;
   }
 
   Future<void> _updateName() async {
-    if (_nameController.text.trim().isNotEmpty) {
-      await ProfileManager.updateName(_nameController.text.trim());
-      setState(() {
-        _userProfile?.name = _nameController.text.trim();
-        _isEditMode = false; // Exit edit mode after saving
-      });
-
+    final newName = _nameController.text.trim();
+    if (newName.isNotEmpty && newName != _userProfile?.name) {
+      try {
+        await ProfileManager.updateName(newName);
+        if (mounted) {
+          setState(() {
+            _userProfile?.name = newName;
+            _isEditMode = false;
+          });
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Profile name updated')));
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Failed to update name: $e')));
+        }
+      }
+    } else if (newName.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Name cannot be empty')));
+    } else {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Profile updated')));
+        setState(() => _isEditMode = false);
       }
     }
   }
 
   Future<void> _pickImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+        maxWidth: 1024,
+      );
 
-    if (image != null) {
-      await ProfileManager.updateProfileImage(image.path);
-      setState(() {
-        _userProfile?.profileImagePath = image.path;
-      });
+      if (image != null && mounted) {
+        await ProfileManager.updateProfileImage(image.path);
+        setState(() {
+          _userProfile?.profileImagePath = image.path;
+        });
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Profile image updated')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to pick or update image: $e')),
+        );
+      }
     }
   }
 
   void _toggleEditMode() {
     setState(() {
       _isEditMode = !_isEditMode;
-      // Reset name field to current value when entering edit mode
       if (_isEditMode) {
         _nameController.text = _userProfile?.name ?? '';
       }
@@ -116,424 +156,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: const Text('Profile & Settings'),
         actions: [
           if (!_isLoading && !_isEditMode)
             IconButton(
-              icon: const Icon(Icons.edit),
+              icon: const Icon(Icons.edit_outlined),
               onPressed: _toggleEditMode,
               tooltip: 'Edit Profile',
             ),
+          if (!_isLoading)
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: _loadInitialData,
+              tooltip: 'Refresh Profile',
+            ),
         ],
+        elevation: 1,
+        shadowColor: Theme.of(context).shadowColor.withOpacity(0.2),
       ),
-      body:
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Profile Card
-                      Card(
-                        elevation: 4,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            children: [
-                              // Profile Picture
-                              _isEditMode
-                                  ? _buildEditableProfileImage()
-                                  : _buildViewOnlyProfileImage(),
-                              const SizedBox(height: 16),
-
-                              // Name Field or Display
-                              _isEditMode
-                                  ? _buildEditableNameField()
-                                  : _buildViewOnlyNameField(),
-                              const SizedBox(height: 16),
-
-                              // Action Buttons - only show in edit mode
-                              if (_isEditMode) _buildActionButtons(),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // Theme Settings Card
-                      _buildThemeSettingsCard(),
-
-                      const SizedBox(height: 24),
-
-                      // Connection Settings Card
-                      _buildConnectionSettingsCard(),
-                    ],
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : RefreshIndicator(
+              onRefresh: _loadInitialData,
+              child: ListView(
+                padding: const EdgeInsets.all(
+                  16.0,
+                ),
+                children: [
+                  ProfileHeader(
+                    userProfile: _userProfile,
+                    nameController: _nameController,
+                    isEditMode: _isEditMode,
+                    onPickImage: _pickImage,
+                    onSaveChanges: _updateName,
+                    onCancelEdit: _cancelEdit,
                   ),
-                ),
-              ),
-    );
-  }
-
-  Widget _buildEditableProfileImage() {
-    return GestureDetector(
-      onTap: _pickImage,
-      child: Stack(
-        alignment: Alignment.bottomRight,
-        children: [
-          CircleAvatar(
-            radius: 50,
-            backgroundColor: Theme.of(
-              context,
-            ).colorScheme.primary.withAlpha(51),
-            backgroundImage:
-                _userProfile?.profileImagePath != null
-                    ? FileImage(File(_userProfile!.profileImagePath!))
-                    : null,
-            child:
-                _userProfile?.profileImagePath == null
-                    ? const Icon(Icons.person, size: 50)
-                    : null,
-          ),
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildViewOnlyProfileImage() {
-    return CircleAvatar(
-      radius: 50,
-      backgroundColor: Theme.of(context).colorScheme.primary.withAlpha(51),
-      backgroundImage:
-          _userProfile?.profileImagePath != null
-              ? FileImage(File(_userProfile!.profileImagePath!))
-              : null,
-      child:
-          _userProfile?.profileImagePath == null
-              ? const Icon(Icons.person, size: 50)
-              : null,
-    );
-  }
-
-  Widget _buildEditableNameField() {
-    return TextField(
-      controller: _nameController,
-      decoration: const InputDecoration(
-        labelText: 'Your Name',
-        border: OutlineInputBorder(),
-        prefixIcon: Icon(Icons.person_outline),
-      ),
-    );
-  }
-
-  Widget _buildViewOnlyNameField() {
-    final name =
-        _userProfile?.name?.isNotEmpty == true
-            ? _userProfile!.name!
-            : 'No name set';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withAlpha(77),
-        ),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.person_outline),
-          const SizedBox(width: 12),
-          Text(name, style: Theme.of(context).textTheme.titleMedium),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: _cancelEdit,
-            icon: const Icon(Icons.cancel),
-            label: const Text('Cancel'),
-            style: OutlinedButton.styleFrom(minimumSize: const Size(0, 50)),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: _updateName,
-            icon: const Icon(Icons.save),
-            label: const Text('Save'),
-            style: ElevatedButton.styleFrom(minimumSize: const Size(0, 50)),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildThemeSettingsCard() {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Theme Settings',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 20),
-
-            // Theme mode section
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Theme.of(context).brightness == Brightness.dark
-                      ? Icons.dark_mode
-                      : Icons.light_mode,
-                  size: 24,
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  Theme.of(context).brightness == Brightness.dark
-                      ? 'Dark Mode Active'
-                      : 'Light Mode Active',
-                ),
-                const SizedBox(width: 12),
-                DropdownButton<ThemeMode>(
-                  value:
-                      Theme.of(context).brightness == Brightness.dark
-                          ? ThemeMode.dark
-                          : ThemeMode.light,
-                  onChanged: (ThemeMode? newThemeMode) {
-                    if (newThemeMode != null) {
-                      widget.setTheme(newThemeMode);
-                    }
-                  },
-                  items: const [
-                    DropdownMenuItem(
-                      value: ThemeMode.system,
-                      child: Text('System'),
-                    ),
-                    DropdownMenuItem(
-                      value: ThemeMode.light,
-                      child: Text('Light'),
-                    ),
-                    DropdownMenuItem(
-                      value: ThemeMode.dark,
-                      child: Text('Dark'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-
-            const Divider(height: 30),
-
-            // Theme color section
-            Text(
-              'Theme Color',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildColorOption(
-                  context,
-                  const Color.fromARGB(255, 255, 11, 153),
-                  'Pink',
-                ),
-                _buildColorOption(
-                  context,
-                  const Color.fromARGB(255, 26, 152, 255),
-                  'Blue',
-                ),
-                _buildColorOption(
-                  context,
-                  const Color.fromARGB(255, 27, 255, 34),
-                  'Green',
-                ),
-                _buildColorOption(
-                  context,
-                  const Color.fromARGB(255, 255, 198, 111),
-                  'Orange',
-                ),
-                _buildColorOption(
-                  context,
-                  const Color.fromARGB(255, 222, 36, 255),
-                  'Purple',
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildConnectionSettingsCard() {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Text(
-              'Connection Settings',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 16),
-            if (_userId != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: Container(
-                  padding: const EdgeInsets.all(12.0),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.outline.withAlpha(77),
-                    ),
+                  const SizedBox(height: 24),
+                  ThemeSettingsCard(
+                    setThemeMode: widget.setThemeMode,
+                    setThemeColor: widget.setThemeColor,
+                    currentThemeColor: widget.currentThemeColor,
+                    currentThemeMode: widget.currentThemeMode,
                   ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.vpn_key_outlined,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Your User ID',
-                              style: Theme.of(context).textTheme.titleSmall,
-                            ),
-                            Text(
-                              _userId!,
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 24),
+                  ConnectionSettingsCard(
+                    userId: _userId,
                   ),
-                ),
-              ),
-            ElevatedButton.icon(
-              // onPressed: _showQrCodeModal,
-              onPressed: () async {
-                final String qrData = await ProfileManager.getQrData();
-                if (mounted) {
-                  await showDialog(
-                    context: context,
-                    builder: (context) {
-                      return AlertDialog(
-                        title: const Text('Your QR Code'),
-                        alignment: Alignment.center,
-                        content: SizedBox(
-                          width: 250,
-                          height: 250,
-                          child: QrService.generateQrCodeWidget(qrData),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: const Text('Close'),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                }
-              },
-              icon: const Icon(Icons.qr_code),
-              label: const Text('Show Your QR Code'),
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
+                  const SizedBox(height: 24),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: () {
-                // TO-DO: Implement QR scanner
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('QR scanner coming soon')),
-                );
-              },
-              icon: const Icon(Icons.qr_code_scanner),
-              label: const Text('Scan Partner\'s QR Code'),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildColorOption(BuildContext context, Color color, String label) {
-    final isSelected = widget.currentThemeColor == color;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-      child: Column(
-        children: [
-          InkWell(
-            onTap: () => widget.setThemeColor(color),
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? Colors.white : Colors.transparent,
-                  width: 3,
-                ),
-                boxShadow:
-                    isSelected
-                        ? [
-                          BoxShadow(
-                            color: Colors.black.withAlpha(77),
-                            blurRadius: 5,
-                            spreadRadius: 1,
-                          ),
-                        ]
-                        : null,
-              ),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
