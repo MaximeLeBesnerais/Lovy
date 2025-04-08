@@ -41,7 +41,7 @@ dependencies:
   image: ^4.5.4
   encrypt: ^5.0.3
   crypto: ^3.0.6
-  flutter_secure_storage: ^4.2.1
+  flutter_secure_storage: ^9.2.4
   qr_flutter: ^4.1.0
   path_provider: ^2.1.5
 
