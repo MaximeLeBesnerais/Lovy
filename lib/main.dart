@@ -1,12 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:werapp/services/mock_chat_service.dart' show MockChatService;
+import 'package:werapp/services/websocket_chat_service.dart' show WebSocketChatService;
 import 'home_screen.dart';
+import 'services/chat_service.dart';
+import 'services/chat_service_factory.dart';
 
 void main() {
-  runApp(const MyApp());
+  // Create a chat service
+  final chatService = ChatServiceFactory.createChatService(
+    // Use mock for development and testing
+    ChatServiceType.mock,
+    // For WebSocket, provide URL:
+    // ChatServiceType.webSocket,
+    // websocketUrl: 'ws://your-server.com/chat',
+  );
+
+  // Connect the chat service (important for either implementation)
+  chatService.connect();
+
+  runApp(MyApp(chatService: chatService));
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  final ChatService chatService;
+
+  const MyApp({super.key, required this.chatService});
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -40,9 +58,7 @@ class _MyAppState extends State<MyApp> {
           brightness: Brightness.light,
         ),
         useMaterial3: true,
-        appBarTheme: const AppBarTheme(
-          centerTitle: true,
-        ),
+        appBarTheme: const AppBarTheme(centerTitle: true),
       ),
       darkTheme: ThemeData(
         brightness: Brightness.dark,
@@ -51,15 +67,27 @@ class _MyAppState extends State<MyApp> {
           brightness: Brightness.dark,
         ),
         useMaterial3: true,
-        appBarTheme: const AppBarTheme(
-          centerTitle: true,
-        ),
+        appBarTheme: const AppBarTheme(centerTitle: true),
       ),
       home: HomeScreen(
         setTheme: setThemeMode,
         setThemeColor: setThemeColor,
         currentThemeColor: _themeColor,
+        chatService: widget.chatService, // Pass the chat service
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    // Properly dispose the service when the app is closed
+    // This is just an example - in reality, you might want to handle
+    // this differently if the service needs to stay alive
+    if (widget.chatService is MockChatService) {
+      (widget.chatService as MockChatService).dispose();
+    } else if (widget.chatService is WebSocketChatService) {
+      (widget.chatService as WebSocketChatService).dispose();
+    }
+    super.dispose();
   }
 }

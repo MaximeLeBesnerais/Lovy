@@ -2,17 +2,20 @@ import 'package:flutter/material.dart';
 import 'screens/chat_screen.dart';
 import 'screens/connect_screen.dart';
 import 'screens/profile_screen.dart';
+import 'services/chat_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(ThemeMode) setTheme;
   final Function(Color) setThemeColor;
   final Color currentThemeColor;
+  final ChatService chatService;
 
   const HomeScreen({
     super.key,
     required this.setTheme,
     required this.setThemeColor,
     required this.currentThemeColor,
+    required this.chatService,
   });
 
   @override
@@ -25,7 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _getPage(int index) {
     switch (index) {
       case 0:
-        return const ChatScreen();
+        return ChatScreen(chatService: widget.chatService);
       case 1:
         return const ConnectScreen();
       case 2:
@@ -35,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
           currentThemeColor: widget.currentThemeColor,
         );
       default:
-        return const ChatScreen();
+        return ChatScreen(chatService: widget.chatService);
     }
   }
 
