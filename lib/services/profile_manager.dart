@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 import '../models/user_profile.dart';
-import '../services/qr_service.dart';
+import 'qr_service.dart';
 
 class ProfileManager {
   static const String _profileKey = 'user_profile';
