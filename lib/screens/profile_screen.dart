@@ -1,165 +1,11 @@
-import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
-import 'dart:typed_data';
-import 'package:crypto/crypto.dart';
-import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:werapp/models/profile_manager.dart';
+import 'package:werapp/services/encryption_service.dart';
+import 'package:werapp/services/qr_service.dart';
 import '../models/user_profile.dart';
-
-// Encryption Service
-class EncryptionService {
-  static const String _keyStorageKey = 'encryption_key';
-  static const String _userIdStorageKey = 'user_id';
-  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
-
-  // Generate a new encryption key
-  static Future<String> generateKey() async {
-    final Random random = Random.secure();
-    final List<int> values = List<int>.generate(32, (i) => random.nextInt(256));
-    final String key = base64Url.encode(values);
-
-    // Save the key to secure storage
-    await _secureStorage.write(key: _keyStorageKey, value: key);
-
-    // Generate and save user ID from key hash
-    final String userId = generateUserIdFromKey(key);
-    await _secureStorage.write(key: _userIdStorageKey, value: userId);
-
-    return key;
-  }
-
-  // Get the current user's encryption key
-  static Future<String?> getCurrentKey() async {
-    return await _secureStorage.read(key: _keyStorageKey);
-  }
-
-  // Generate a user ID by hashing the encryption key
-  static String generateUserIdFromKey(String key) {
-    final bytes = utf8.encode(key);
-    final digest = sha256.convert(bytes);
-    // Use first 16 characters of the hash as the user ID
-    return digest.toString().substring(0, 16);
-  }
-
-  // Get the current user's ID
-  static Future<String?> getCurrentUserId() async {
-    return await _secureStorage.read(key: _userIdStorageKey);
-  }
-
-  // Encrypt a message with the specified key
-  static String encryptMessage(String message, String key) {
-    final keyBytes = base64Url.decode(key);
-    final encryptKey = encrypt.Key(Uint8List.fromList(keyBytes));
-    final iv = encrypt.IV.fromLength(16);
-
-    final encrypter = encrypt.Encrypter(encrypt.AES(encryptKey));
-    final encrypted = encrypter.encrypt(message, iv: iv);
-
-    return encrypted.base64;
-  }
-
-  // Decrypt a message with the specified key
-  static String decryptMessage(String encryptedMessage, String key) {
-    try {
-      final keyBytes = base64Url.decode(key);
-      final encryptKey = encrypt.Key(Uint8List.fromList(keyBytes));
-      final iv = encrypt.IV.fromLength(16);
-
-      final encrypter = encrypt.Encrypter(encrypt.AES(encryptKey));
-      final decrypted = encrypter.decrypt64(encryptedMessage, iv: iv);
-
-      return decrypted;
-    } catch (e) {
-      // If decryption fails, it might be encrypted with another key
-      return '';
-    }
-  }
-
-  // Process and compress an image for QR code sharing
-  static Future<String> compressProfileImage(
-    String imagePath, {
-    int maxWidth = 150,
-    int maxHeight = 150,
-    int quality = 70,
-  }) async {
-    final File imageFile = File(imagePath);
-    if (!await imageFile.exists()) {
-      return '';
-    }
-
-    final List<int> imageBytes = await imageFile.readAsBytes();
-    final img.Image? originalImage = img.decodeImage(Uint8List.fromList(imageBytes));
-
-    if (originalImage == null) {
-      return '';
-    }
-
-    // Resize the image to reduce size
-    final img.Image resizedImage = img.copyResize(
-      originalImage,
-      width: maxWidth,
-      height: maxHeight,
-    );
-
-    // Encode image to JPEG with the specified quality
-    final List<int> compressedBytes = img.encodeJpg(
-      resizedImage,
-      quality: quality,
-    );
-
-    // Convert to base64
-    final String base64Image = base64Encode(compressedBytes);
-
-    return base64Image;
-  }
-}
-
-// QR Service
-class QrService {
-  // Generate QR code data from user profile and encryption key
-  static Future<String> generateQrData(UserProfile profile) async {
-    // Get the current key
-    String? key = await EncryptionService.getCurrentKey();
-
-    // Generate a new key if none exists
-    if (key == null) {
-      key = await EncryptionService.generateKey();
-    }
-
-    // Compress the profile image if it exists
-    String base64Image = '';
-    if (profile.profileImagePath != null) {
-      base64Image = await EncryptionService.compressProfileImage(
-        profile.profileImagePath!,
-      );
-    }
-
-    // Create the data object
-    final Map<String, dynamic> qrData = {
-      'name': profile.name ?? 'User',
-      'picture': base64Image,
-      'key': key,
-    };
-
-    // Convert to JSON string
-    return jsonEncode(qrData);
-  }
-
-  // Parse QR code data from scan result
-  static Map<String, dynamic>? parseQrData(String data) {
-    try {
-      return jsonDecode(data) as Map<String, dynamic>;
-    } catch (e) {
-      return null;
-    }
-  }
-}
 
 // Profile Screen
 class ProfileScreen extends StatefulWidget {
@@ -395,7 +241,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             radius: 50,
             backgroundColor: Theme.of(
               context,
-            ).colorScheme.primary.withOpacity(0.2),
+            ).colorScheme.primary.withValues(alpha: 0.2),
             backgroundImage:
                 _userProfile?.profileImagePath != null
                     ? FileImage(File(_userProfile!.profileImagePath!))
@@ -418,7 +264,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildViewOnlyProfileImage() {
     return CircleAvatar(
       radius: 50,
-      backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+      backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
       backgroundImage:
           _userProfile?.profileImagePath != null
               ? FileImage(File(_userProfile!.profileImagePath!))
@@ -453,7 +299,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
@@ -618,7 +464,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     border: Border.all(
                       color: Theme.of(
                         context,
-                      ).colorScheme.outline.withOpacity(0.3),
+                      ).colorScheme.outline.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Row(
@@ -698,7 +544,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     isSelected
                         ? [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
+                            color: Colors.black.withValues(alpha: 0.3),
                             blurRadius: 5,
                             spreadRadius: 1,
                           ),
