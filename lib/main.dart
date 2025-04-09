@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:werapp/services/mock_chat_service.dart' show MockChatService;
-import 'package:werapp/services/websocket_chat_service.dart' show WebSocketChatService;
+import 'package:lovy/services/mock_chat_service.dart' show MockChatService;
+import 'package:lovy/services/websocket_chat_service.dart' show WebSocketChatService;
 import 'home_screen.dart';
 import 'services/chat_service.dart';
 import 'services/chat_service_factory.dart';

@@ -1,4 +1,4 @@
-package com.example.werapp
+package com.maxime.lovy
 
 import io.flutter.embedding.android.FlutterActivity
 

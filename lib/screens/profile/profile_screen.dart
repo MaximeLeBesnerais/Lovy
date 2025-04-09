@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:werapp/services/profile_manager.dart';
-import 'package:werapp/services/encryption_service.dart';
+import 'package:lovy/services/profile_manager.dart';
+import 'package:lovy/services/encryption_service.dart';
 import 'widgets/profile_header.dart';
 import 'widgets/theme_settings_card.dart';
 import 'widgets/connection_settings_card.dart';

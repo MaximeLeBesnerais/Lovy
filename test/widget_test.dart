@@ -8,9 +8,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:werapp/main.dart';
+import 'package:lovy/main.dart';
 
-import 'package:werapp/services/mock_chat_service.dart';
+import 'package:lovy/services/mock_chat_service.dart';
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {

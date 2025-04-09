@@ -1,4 +1,4 @@
-# werapp
+# lovy
 
 A new Flutter project.
 

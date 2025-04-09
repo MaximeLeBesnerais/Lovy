@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:werapp/models/user_profile.dart';
+import 'package:lovy/models/user_profile.dart';
 
 class ProfileHeader extends StatelessWidget {
   final UserProfile? userProfile;

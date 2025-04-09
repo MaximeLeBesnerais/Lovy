@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:werapp/services/profile_manager.dart';
-import 'package:werapp/services/qr_service.dart';
+import 'package:lovy/services/profile_manager.dart';
+import 'package:lovy/services/qr_service.dart';
 
 class ConnectionSettingsCard extends StatelessWidget {
   final String? userId;
